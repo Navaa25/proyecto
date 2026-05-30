@@ -3,7 +3,7 @@ from pymongo import MongoClient
 import certifi
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='.')
 
 # Conexión directa a tu base de datos real de MongoDB Atlas
 MONGO_URI = "mongodb+srv://ajaviermonna5_user:250203ja@cluster0.ebicbgb.mongodb.net/?appName=Cluster0"
