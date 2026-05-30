@@ -121,17 +121,17 @@
 <body>
 
     <div class="header">
-        CHEDRAUI • Punto de Venta (Caja 01)
+        CHEDRAUI • Punto de Venta
     </div>
 
     <div class="container">
         <!-- SECCIÓN REGISTRO -->
-        <h2>Agregar Productos a la Venta (Modo Local)</h2>
+        <h2>Agregar Productos a la Venta </h2>
         
         <div class="form-group">
             <div class="input-field">
                 <label>Producto:</label>
-                <input type="text" id="producto" placeholder="Ej. Bolsa de Totopos">
+                <input type="text" id="producto" placeholder="">
             </div>
             <div class="input-field">
                 <label>Precio ($):</label>
@@ -155,7 +155,7 @@
                 </tr>
             </thead>
             <tbody id="tablaCuerpo">
-                <!-- Aquí se van metiendo los renglones con JS -->
+            
             </tbody>
         </table>
 
@@ -163,25 +163,23 @@
             Total a Pagar: $<span id="totalPago">0.00</span>
         </div>
 
-        <!-- SECCIÓN SINCRONIZAR -->
         <div class="section-sync">
             <h2>Subir Venta a Internet</h2>
             <p class="sync-text">
-                Dale clic al botón de abajo para mandar las ventas guardadas de la compu directo a la base de datos de MongoDB.
+                Dale clic al botón de abajo para mandar las ventas guardadas directo a la base de datos de MongoDB.
             </p>
             <button class="btn-sync" id="btnSincronizar">
                 💾 Guardar Venta en la Nube
             </button>
         </div>
     </div>
-
-    <!-- LÓGICA DE INDEXEDDB Y APIS -->
+    
     <script>
         let db;
         const bdNombre = "ChedrauiPOS";
         const bdVersion = 1;
 
-        // Abrir la base de datos del navegador (IndexedDB)
+        // Abrir la base de datos del navegador
         const solicitud = indexedDB.open(bdNombre, bdVersion);
 
         solicitud.onerror = function(e) {
