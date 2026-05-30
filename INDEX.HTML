@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chedraui - Punto de Venta Web</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 0; }
+        header { background-color: #FF6F00; color: white; padding: 15px 20px; font-size: 24px; font-weight: bold; }
+        .container { max-width: 900px; margin: 25px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { color: #0D47A1; border-bottom: 2px solid #0D47A1; padding-bottom: 5px; }
+        .row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .form-group { flex: 1; display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; color: #333; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        button { padding: 12px 20px; font-size: 14px; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-add { background-color: #2E7D32; }
+        .btn-sync { background-color: #0D47A1; width: 100%; font-size: 16px; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f1f3f5; color: #333; }
+        .total-box { text-align: right; font-size: 20px; font-weight: bold; margin-top: 15px; color: #FF6F00; }
+    </style>
+</head>
+<body>
+
+<header>CHEDRAUI • Punto de Venta (Caja 01)</header>
+
+<div class="container">
+    <h2>Registrar Venta Actual (Local - IndexedDB)</h2>
+    <div class="row">
+        <div class="form-group">
+            <label for="producto">Producto:</label>
+            <input type="text" id="producto" placeholder="Ej. Bolsa de Totopos">
+        </div>
+        <div class="form-group">
+            <label for="precio">Precio ($):</label>
+            <input type="number" id="precio" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+            <label for="cantidad">Cantidad:</label>
+            <input type="number" id="cantidad" value="1">
+        </div>
+        <div class="form-group" style="justify-content: flex-end;">
+            <button class="btn-add" onclick="agregarArticulo()">+ Agregar al Carrito</button>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Precio Unitario</th>
+                <th>Cantidad</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-carrito">
+            <!-- Los productos agregados aparecerán aquí -->
+        </tbody>
+    </table>
+
+    <div class="total-box">Total a Pagar: $<span id="total">0.00</span></div>
+
+    <h2>Sincronización a la Nube</h2>
+    <p style="font-size: 13px; color: #666;">Al dar clic, los datos almacenados localmente se estructurarán en formato JSON y se enviarán de forma permanente a la Base de Datos real en la nube.</p>
+    <button class="btn-sync" onclick="sincronizarConNube()">💾 Sincronizar Venta de Forma Permanente (JSON)</button>
+</div>
+
+<script>
+    // ==========================================
+    // CONFIGURACIÓN DE INDEXED DB (BASE DE DATOS LOCAL)
+    // ==========================================
+    let db;
+    const request = indexedDB.open("ChedrauiLocalDB", 1);
+
+    request.onupgradeneeded = function(event) {
+        db = event.target.result;
+        // Creamos un almacén de objetos llamado "carrito"
+        db.createObjectStore("carrito", { keyPath: "id", autoIncrement: true });
+    };
+
+    request.onsuccess = function(event) {
+        db = event.target.result;
+        renderizarTabla();
+    };
+
+    request.onerror = function(event) {
+        console.error("Error abriendo IndexedDB:", event.target.error);
+    };
+
+    // ==========================================
+    // LÓGICA DEL PUNTO DE VENTA
+    // ==========================================
+    function agregarArticulo() {
+        const nombre = document.getElementById("producto").value;
+        const precio = parseFloat(document.getElementById("precio").value);
+        const cantidad = parseInt(document.getElementById("cantidad").value);
+
+        if (!nombre || isNaN(precio) || isNaN(cantidad)) {
+            alert("Por favor llena todos los campos correctamente.");
+            return;
+        }
+
+        const articulo = { nombre, precio, cantidad, subtotal: precio * cantidad };
+
+        // Guardar en IndexedDB
+        const tx = db.transaction("carrito", "readwrite");
+        const store = tx.objectStore("carrito");
+        store.add(articulo);
+
+        tx.oncomplete = function() {
+            // Limpiar formulario y refrescar la tabla visual
+            document.getElementById("producto").value = "";
+            document.getElementById("precio").value = "";
+            document.getElementById("cantidad").value = "1";
+            renderizarTabla();
+        };
+    }
+
+    function renderizarTabla() {
+        const tbody = document.getElementById("tabla-carrito");
+        tbody.innerHTML = "";
+        let totalAcumulado = 0;
+
+        const tx = db.transaction("carrito", "readonly");
+        const store = tx.objectStore("carrito");
+        const cursorRequest = store.openCursor();
+
+        cursorRequest.onsuccess = function(event) {
+            const cursor = event.target.result;
+            if (cursor) {
+                const item = cursor.value;
+                totalAcumulado += item.subtotal;
+
+                const row = `<tr>
+                    <td>${item.nombre}</td>
+                    <td>$${item.precio.toFixed(2)}</td>
+                    <td>${item.cantidad}</td>
+                    <td>$${item.subtotal.toFixed(2)}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+                cursor.continue();
+            } else {
+                document.getElementById("total").innerText = totalAcumulado.toFixed(2);
+            }
+        };
+    }
+
+    // ==========================================
+    // ENVÍO DE DATOS EN FORMATO JSON A LA NUBE
+    // ==========================================
+    function sincronizarConNube() {
+        const tx = db.transaction("carrito", "readonly");
+        const store = tx.objectStore("carrito");
+        store.getAll().onsuccess = function(event) {
+            const todosLosArticulos = event.target.result;
+
+            if (todosLosArticulos.length === 0) {
+                alert("El carrito local está vacío. No hay nada que sincronizar.");
+                return;
+            }
+
+            const ticketVentaJSON = {
+                fecha: new Date().toISOString(),
+                tienda: "Chedraui Sucursal Nube",
+                articulos: todosLosArticulos,
+                total_venta: parseFloat(document.getElementById("total").innerText)
+            };
+
+            // HACE EL ENVÍO REAL AL SERVIDOR
+            fetch('/api/ventas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ticketVentaJSON)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("¡Sincronización Exitosa!\n\nLos datos de IndexedDB se enviaron en formato JSON a MongoDB Atlas.");
+                // Vaciar carrito local
+                const borrarTx = db.transaction("carrito", "readwrite");
+                borrarTx.objectStore("carrito").clear();
+                borrarTx.oncomplete = function() { renderizarTabla(); };
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Hubo un error al conectar con el servidor.");
+            });
+        };
+    }
+</script>
+
+</body>
+</html>
