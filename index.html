@@ -227,8 +227,7 @@
                 mostrarCarrito();
             };
         });
-
-        // Función para pintar la tabla con lo que hay guardado en la compu
+        
         function mostrarCarrito() {
             const cuerpo = document.getElementById("tablaCuerpo");
             cuerpo.innerHTML = "";
@@ -281,7 +280,7 @@
                     };
 
                     // Mandar la info usando la URL actual de tu Render
-                    fetch("/api/sincronizar", {
+                   fetch("/api/ventas", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
